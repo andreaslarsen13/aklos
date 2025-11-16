@@ -2,13 +2,13 @@ import { Article } from "../types";
 
 interface ArticleItemProps {
   article: Article;
-  onClick?: () => void;
+  onClick?: (e: React.MouseEvent) => void;
 }
 
 export function ArticleItem({ article, onClick }: ArticleItemProps) {
   return (
     <div
-      onClick={onClick}
+      onClick={(e) => onClick?.(e)}
       className="p-3 border-b last:border-b-0 transition-colors cursor-pointer"
       style={{
         borderColor: "rgba(0, 0, 0, 0.08)",

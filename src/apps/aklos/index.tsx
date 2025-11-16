@@ -4,7 +4,9 @@ import { WindowFrame } from "@/components/layout/WindowFrame";
 import { SpatialCanvas } from "./components/SpatialCanvas";
 import { ActionBar } from "./components/ActionBar";
 import { AklosMenuBar } from "./components/AklosMenuBar";
+import { LayoutMode } from "./components/LayoutControls";
 import { generateMockBlocks, generateNewBlock } from "./utils/mockBlocks";
+import { calculateGridPositions, calculateFocusedPositions } from "./utils/layoutCalculations";
 import { Block, ActionBarMode } from "./types";
 import { AppProps, BaseApp } from "../base/types";
 import { useThemeStore } from "@/stores/useThemeStore";
@@ -21,11 +23,34 @@ function AklosAppComponent({
 }: AppProps) {
   const [blocks, setBlocks] = useState<Block[]>(generateMockBlocks());
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
+  const [blockOrder, setBlockOrder] = useState<string[]>([]);
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("spatial");
+  const [blockScales, setBlockScales] = useState<Record<string, number>>({});
+  const [layoutZIndices, setLayoutZIndices] = useState<Record<string, number>>({});
+  const [focusedViewOrder, setFocusedViewOrder] = useState<string[]>([]); // Track order for focused view stack
   const [isFullscreen, setIsFullscreen] = useState(true); // Auto-open in fullscreen
   const previousSizeRef = useRef<{ width: number; height: number } | null>(null);
   const previousPositionRef = useRef<{ x: number; y: number } | null>(null);
   const currentTheme = useThemeStore((state) => state.current);
   const isXpTheme = currentTheme === "xp" || currentTheme === "win98";
+
+  // Initialize block order when blocks change
+  useEffect(() => {
+    setBlockOrder((prevOrder) => {
+      const newBlockIds = blocks.map((b) => b.id);
+      const existingIds = prevOrder.filter((id) => newBlockIds.includes(id));
+      const newIds = newBlockIds.filter((id) => !prevOrder.includes(id));
+      return [...existingIds, ...newIds];
+    });
+    
+    // Initialize focused view order
+    setFocusedViewOrder((prevOrder) => {
+      const newBlockIds = blocks.map((b) => b.id);
+      const existingIds = prevOrder.filter((id) => newBlockIds.includes(id));
+      const newIds = newBlockIds.filter((id) => !prevOrder.includes(id));
+      return [...existingIds, ...newIds];
+    });
+  }, [blocks]);
 
   const { updateWindowState, updateInstanceWindowState } =
     useAppStoreShallow((state) => ({
@@ -71,12 +96,83 @@ function AklosAppComponent({
   };
 
   const handleSelectBlock = (blockId: string) => {
+    if (layoutMode === "focused" && selectedBlockId && selectedBlockId !== blockId) {
+      // In focused mode, when switching focus, move the old focused block to the end of the list
+      setFocusedViewOrder(prev => {
+        // Remove the newly selected block (it's becoming focused)
+        // Keep all other blocks in their order, and add the old focused block to the end
+        const withoutNewSelection = prev.filter(id => id !== blockId);
+        const withoutBoth = withoutNewSelection.filter(id => id !== selectedBlockId);
+        return [...withoutBoth, selectedBlockId];
+      });
+    }
     setSelectedBlockId(blockId);
   };
 
   const handleDeselectBlock = () => {
     setSelectedBlockId(null);
   };
+
+  const handleBlockPositionChange = useCallback(
+    (blockId: string, newPosition: { x: number; y: number }) => {
+      setBlocks((prev) =>
+        prev.map((block) =>
+          block.id === blockId ? { ...block, position: newPosition } : block
+        )
+      );
+    },
+    []
+  );
+
+  const handleBlockInteraction = useCallback((blockId: string) => {
+    setBlockOrder((prev) => {
+      const filtered = prev.filter((id) => id !== blockId);
+      return [...filtered, blockId];
+    });
+  }, []);
+
+  // Apply layout when mode or selection changes
+  useEffect(() => {
+    if (layoutMode === "grid") {
+      const newPositions = calculateGridPositions(blocks);
+      setBlocks((prev) =>
+        prev.map((block) => ({
+          ...block,
+          position: newPositions[block.id] || block.position,
+        }))
+      );
+      setBlockScales({});
+      setLayoutZIndices({});
+    } else if (layoutMode === "focused") {
+      // Reorder blocks based on focusedViewOrder for the vertical stack
+      const orderedBlockIds = [...focusedViewOrder];
+      const orderedBlocks = orderedBlockIds
+        .map(id => blocks.find(b => b.id === id))
+        .filter((b): b is Block => b !== undefined);
+      
+      // Make sure all blocks are included
+      const missingBlocks = blocks.filter(b => !orderedBlockIds.includes(b.id));
+      const allOrderedBlocks = [...orderedBlocks, ...missingBlocks];
+      
+      const { positions, scales, zIndices } = calculateFocusedPositions(allOrderedBlocks, selectedBlockId);
+      setBlocks((prev) =>
+        prev.map((block) => ({
+          ...block,
+          position: positions[block.id] || block.position,
+        }))
+      );
+      setBlockScales(scales);
+      setLayoutZIndices(zIndices);
+    } else {
+      // Spatial mode - reset scales and layout z-indices
+      setBlockScales({});
+      setLayoutZIndices({});
+    }
+  }, [layoutMode, selectedBlockId, blocks.length, focusedViewOrder]);
+
+  const handleLayoutModeChange = useCallback((mode: LayoutMode) => {
+    setLayoutMode(mode);
+  }, []);
 
   const toggleFullscreen = useCallback(() => {
     if (!isFullscreen) {
@@ -148,8 +244,7 @@ function AklosAppComponent({
           className="fixed inset-0 flex flex-col"
           style={{
             zIndex: 9999,
-            backgroundColor: "var(--os-color-window-bg)",
-            backgroundImage: "var(--os-pinstripe-window)",
+            background: "linear-gradient(180deg, #E2E2E2 0%, #D0D0D0 68%, #A2A9B2 100%)",
           }}
         >
           {/* Spatial Canvas */}
@@ -158,7 +253,14 @@ function AklosAppComponent({
             selectedBlockId={selectedBlockId}
             onSelectBlock={handleSelectBlock}
             onDeselectBlock={handleDeselectBlock}
-            hideControls={true}
+            onBlockPositionChange={handleBlockPositionChange}
+            onBlockInteraction={handleBlockInteraction}
+            blockOrder={blockOrder}
+            layoutMode={layoutMode}
+            blockScales={blockScales}
+            layoutZIndices={layoutZIndices}
+            onLayoutModeChange={handleLayoutModeChange}
+            hideControls={false}
           />
 
           {/* Action Bar */}
@@ -216,6 +318,13 @@ function AklosAppComponent({
                 selectedBlockId={selectedBlockId}
                 onSelectBlock={handleSelectBlock}
                 onDeselectBlock={handleDeselectBlock}
+                onBlockPositionChange={handleBlockPositionChange}
+                onBlockInteraction={handleBlockInteraction}
+                blockOrder={blockOrder}
+                layoutMode={layoutMode}
+                blockScales={blockScales}
+                layoutZIndices={layoutZIndices}
+                onLayoutModeChange={handleLayoutModeChange}
                 hideControls={false}
               />
 
