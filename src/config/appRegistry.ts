@@ -13,6 +13,7 @@ import { SynthApp } from "@/apps/synth";
 import { IpodApp } from "@/apps/ipod";
 import { TerminalApp } from "@/apps/terminal";
 import { AppletViewerApp } from "@/apps/applet-viewer";
+import { AklosApp } from "@/apps/aklos";
 import { appIds } from "./appIds";
 import type {
   BaseApp,
@@ -154,6 +155,13 @@ export const appRegistry = {
       defaultSize: { width: 365, height: 415 },
       minSize: { width: 320, height: 415 },
       maxSize: { width: 365, height: 600 },
+    } as WindowConstraints,
+  },
+  [AklosApp.id]: {
+    ...AklosApp,
+    windowConfig: {
+      defaultSize: { width: 900, height: 700 },
+      minSize: { width: 800, height: 600 },
     } as WindowConstraints,
   },
 } as const;
