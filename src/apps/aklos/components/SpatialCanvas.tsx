@@ -1,5 +1,6 @@
 import { Block as BlockType } from "../types";
 import { Block } from "./Block";
+import { LayoutControls, LayoutMode } from "./LayoutControls";
 import { useCanvasNavigation } from "../hooks/useCanvasNavigation";
 
 interface SpatialCanvasProps {
@@ -7,6 +8,13 @@ interface SpatialCanvasProps {
   selectedBlockId: string | null;
   onSelectBlock: (blockId: string) => void;
   onDeselectBlock: () => void;
+  onBlockPositionChange: (blockId: string, newPosition: { x: number; y: number }) => void;
+  onBlockInteraction: (blockId: string) => void;
+  blockOrder: string[];
+  layoutMode: LayoutMode;
+  blockScales: Record<string, number>;
+  layoutZIndices: Record<string, number>;
+  onLayoutModeChange: (mode: LayoutMode) => void;
   hideControls?: boolean;
 }
 
@@ -15,6 +23,13 @@ export function SpatialCanvas({
   selectedBlockId,
   onSelectBlock,
   onDeselectBlock,
+  onBlockPositionChange,
+  onBlockInteraction,
+  blockOrder,
+  layoutMode,
+  blockScales,
+  layoutZIndices,
+  onLayoutModeChange,
   hideControls = false,
 }: SpatialCanvasProps) {
   const { canvasState, isDragging, handleMouseDown, canvasRef } =
@@ -31,8 +46,7 @@ export function SpatialCanvas({
       onTouchStart={handleMouseDown}
       style={{
         cursor: isDragging ? "grabbing" : "grab",
-        backgroundColor: "var(--os-color-window-bg)",
-        backgroundImage: "var(--os-pinstripe-window)",
+        background: "linear-gradient(180deg, #E2E2E2 0%, #D0D0D0 68%, #A2A9B2 100%)",
       }}
     >
       {/* Subtle grid overlay */}
@@ -53,22 +67,46 @@ export function SpatialCanvas({
           transition: isDragging ? "none" : "transform 0.1s ease-out",
         }}
         onClick={(e) => {
-          // Deselect if clicking on canvas background
+          // Deselect if clicking on canvas background (but not in focused mode)
           if (e.target === e.currentTarget) {
-            onDeselectBlock();
+            if (layoutMode !== "focused") {
+              onDeselectBlock();
+            }
           }
         }}
       >
         {/* Render blocks */}
-        {blocks.map((block) => (
-          <Block
-            key={block.id}
-            block={block}
-            isSelected={selectedBlockId === block.id}
-            onSelect={() => onSelectBlock(block.id)}
-          />
-        ))}
+        {blocks.map((block) => {
+          const orderIndex = blockOrder.indexOf(block.id);
+          const zIndexBase = orderIndex >= 0 ? orderIndex + 10 : 1;
+          const scale = blockScales[block.id] || 1;
+          const layoutZIndex = layoutZIndices[block.id];
+          
+          return (
+            <Block
+              key={block.id}
+              block={block}
+              isSelected={selectedBlockId === block.id}
+              onSelect={() => onSelectBlock(block.id)}
+              onPositionChange={onBlockPositionChange}
+              onInteraction={onBlockInteraction}
+              canvasZoom={canvasState.zoom}
+              zIndexBase={zIndexBase}
+              scale={scale}
+              layoutMode={layoutMode}
+              layoutZIndex={layoutZIndex}
+            />
+          );
+        })}
       </div>
+
+      {/* Layout Controls - top left */}
+      {!hideControls && (
+        <LayoutControls
+          currentMode={layoutMode}
+          onModeChange={onLayoutModeChange}
+        />
+      )}
 
       {/* Canvas controls overlay - Aqua styled (hidden in fullscreen) */}
       {!hideControls && (
