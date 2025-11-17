@@ -7,6 +7,8 @@ interface ActionBarProps {
   selectedBlockTopic?: string;
   onSubmit: (value: string) => void;
   onCancel?: () => void;
+  isLoading?: boolean;
+  error?: string | null;
 }
 
 export function ActionBar({
@@ -14,6 +16,8 @@ export function ActionBar({
   selectedBlockTopic,
   onSubmit,
   onCancel,
+  isLoading = false,
+  error = null,
 }: ActionBarProps) {
   const [value, setValue] = useState("");
   const inputRef = useRef<HTMLInputElement>(null);
@@ -113,15 +117,21 @@ export function ActionBar({
         </div>
       </form>
 
-      {/* Mode label */}
+      {/* Mode label / Loading / Error */}
       <div 
         className="text-center mt-2 text-[11px] font-medium"
         style={{
-          color: "var(--os-color-text-secondary)",
+          color: error ? "#ff6b6b" : "var(--os-color-text-secondary)",
           fontFamily: "var(--os-font-ui)",
         }}
       >
-        {mode === "search" ? "Search Mode" : "Chat Mode"}
+        {isLoading ? (
+          "Searching..."
+        ) : error ? (
+          error
+        ) : (
+          mode === "search" ? "Search Mode" : "Chat Mode"
+        )}
       </div>
     </div>
   );

@@ -4,6 +4,11 @@ import tailwindcss from "@tailwindcss/vite";
 import vercel from "vite-plugin-vercel";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import { apiPlugin } from "./vite-plugin-api";
+import dotenv from "dotenv";
+
+// Load .env.local for server-side API routes
+dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 // Polyfill __dirname in ESM context (Node >=16)
 const __filename = fileURLToPath(import.meta.url);
@@ -18,7 +23,7 @@ export default defineConfig({
       ignored: ["**/.terminals/**"],
     },
   },
-  plugins: [react(), tailwindcss(), vercel()],
+  plugins: [react(), tailwindcss(), apiPlugin(), vercel()],
   resolve: {
     alias: {
       "@": path.resolve(__dirname, "./src"),

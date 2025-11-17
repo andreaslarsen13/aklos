@@ -4,8 +4,9 @@ import { WindowFrame } from "@/components/layout/WindowFrame";
 import { SpatialCanvas } from "./components/SpatialCanvas";
 import { ActionBar } from "./components/ActionBar";
 import { AklosMenuBar } from "./components/AklosMenuBar";
+import { EmptyState } from "./components/EmptyState";
 import { LayoutMode } from "./components/LayoutControls";
-import { generateMockBlocks, generateNewBlock } from "./utils/mockBlocks";
+import { searchWithParallel } from "./services/searchService";
 import { calculateFocusedArticlePositions } from "./utils/layoutCalculations";
 import { ArticleCard } from "./components/ArticleCard";
 import { Block, ActionBarMode } from "./types";
@@ -22,7 +23,7 @@ function AklosAppComponent({
   skipInitialSound,
   instanceId,
 }: AppProps) {
-  const [blocks, setBlocks] = useState<Block[]>(generateMockBlocks());
+  const [blocks, setBlocks] = useState<Block[]>([]);
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [blockOrder, setBlockOrder] = useState<string[]>([]);
   const [layoutMode, setLayoutMode] = useState<LayoutMode>("home");
@@ -35,6 +36,8 @@ function AklosAppComponent({
   const [articleZIndices, setArticleZIndices] = useState<Record<string, number>>({});
   const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(true); // Auto-open in fullscreen
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchError, setSearchError] = useState<string | null>(null);
   const previousSizeRef = useRef<{ width: number; height: number } | null>(null);
   const previousPositionRef = useRef<{ x: number; y: number } | null>(null);
   const currentTheme = useThemeStore((state) => state.current);
@@ -80,10 +83,19 @@ function AklosAppComponent({
   const mode: ActionBarMode = selectedBlockId ? "chat" : "search";
   const selectedBlock = blocks.find((b) => b.id === selectedBlockId);
 
-  const handleSearch = (query: string) => {
-    console.log("Search query:", query);
-    const newBlock = generateNewBlock(query);
-    setBlocks((prev) => [...prev, newBlock]);
+  const handleSearch = async (query: string) => {
+    setIsSearching(true);
+    setSearchError(null);
+    
+    try {
+      const newBlocks = await searchWithParallel(query);
+      setBlocks((prev) => [...prev, ...newBlocks]);
+    } catch (error) {
+      console.error("Search error:", error);
+      setSearchError(error instanceof Error ? error.message : "Failed to search. Please try again.");
+    } finally {
+      setIsSearching(false);
+    }
   };
 
   const handleChat = (message: string) => {
@@ -340,20 +352,23 @@ function AklosAppComponent({
             }}
           >
             {layoutMode === "home" ? (
-              <SpatialCanvas
-                blocks={blocks}
-                selectedBlockId={selectedBlockId}
-                onSelectBlock={handleSelectBlock}
-                onDeselectBlock={handleDeselectBlock}
-                onBlockPositionChange={handleBlockPositionChange}
-                onBlockInteraction={handleBlockInteraction}
-                blockOrder={blockOrder}
-                layoutMode={layoutMode}
-                blockScales={blockScales}
-                layoutZIndices={layoutZIndices}
-                onLayoutModeChange={handleLayoutModeChange}
-                hideControls={false}
-              />
+              <>
+                {blocks.length === 0 && <EmptyState />}
+                <SpatialCanvas
+                  blocks={blocks}
+                  selectedBlockId={selectedBlockId}
+                  onSelectBlock={handleSelectBlock}
+                  onDeselectBlock={handleDeselectBlock}
+                  onBlockPositionChange={handleBlockPositionChange}
+                  onBlockInteraction={handleBlockInteraction}
+                  blockOrder={blockOrder}
+                  layoutMode={layoutMode}
+                  blockScales={blockScales}
+                  layoutZIndices={layoutZIndices}
+                  onLayoutModeChange={handleLayoutModeChange}
+                  hideControls={false}
+                />
+              </>
             ) : (
             /* Focused article view */
             <div className="relative w-full h-full">
@@ -428,6 +443,8 @@ function AklosAppComponent({
             selectedBlockTopic={selectedBlock?.topic}
             onSubmit={handleSubmit}
             onCancel={mode === "chat" ? handleDeselectBlock : undefined}
+            isLoading={isSearching}
+            error={searchError}
           />
 
           {/* Exit fullscreen button - shows in fullscreen mode */}
@@ -482,20 +499,23 @@ function AklosAppComponent({
                 }}
               >
                 {layoutMode === "home" ? (
-                  <SpatialCanvas
-                    blocks={blocks}
-                    selectedBlockId={selectedBlockId}
-                    onSelectBlock={handleSelectBlock}
-                    onDeselectBlock={handleDeselectBlock}
-                    onBlockPositionChange={handleBlockPositionChange}
-                    onBlockInteraction={handleBlockInteraction}
-                    blockOrder={blockOrder}
-                    layoutMode={layoutMode}
-                    blockScales={blockScales}
-                    layoutZIndices={layoutZIndices}
-                    onLayoutModeChange={handleLayoutModeChange}
-                    hideControls={false}
-                  />
+                  <>
+                    {blocks.length === 0 && <EmptyState />}
+                    <SpatialCanvas
+                      blocks={blocks}
+                      selectedBlockId={selectedBlockId}
+                      onSelectBlock={handleSelectBlock}
+                      onDeselectBlock={handleDeselectBlock}
+                      onBlockPositionChange={handleBlockPositionChange}
+                      onBlockInteraction={handleBlockInteraction}
+                      blockOrder={blockOrder}
+                      layoutMode={layoutMode}
+                      blockScales={blockScales}
+                      layoutZIndices={layoutZIndices}
+                      onLayoutModeChange={handleLayoutModeChange}
+                      hideControls={false}
+                    />
+                  </>
                 ) : (
                 /* Focused article view */
                 <div className="relative w-full h-full">
@@ -569,6 +589,8 @@ function AklosAppComponent({
                 selectedBlockTopic={selectedBlock?.topic}
                 onSubmit={handleSubmit}
                 onCancel={mode === "chat" ? handleDeselectBlock : undefined}
+                isLoading={isSearching}
+                error={searchError}
               />
 
               {/* Fullscreen toggle button (bottom right corner) */}

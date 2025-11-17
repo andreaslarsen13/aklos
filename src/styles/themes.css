@@ -220,6 +220,99 @@
   --os-color-selection-text: #000000;
 }
 
+/* Timeless Theme - MercuryOS + Liquid Glass */
+:root[data-os-theme="timeless"] {
+  --os-font-ui: "Inter", -apple-system, BlinkMacSystemFont, "SF Pro Display", 
+    "Segoe UI", system-ui, sans-serif;
+  --os-font-mono: "SF Mono", "JetBrains Mono", "Fira Code", Menlo, Monaco, 
+    "Courier New", monospace;
+  
+  /* Translucent glass backgrounds */
+  --os-color-window-bg: rgba(255, 255, 255, 0.7);
+  --os-color-menubar-bg: linear-gradient(
+    to bottom,
+    rgba(248, 248, 248, 0.85),
+    rgba(240, 240, 240, 0.85)
+  );
+  --os-color-menubar-border: rgba(255, 255, 255, 0.2);
+  --os-color-menubar-text: rgba(0, 0, 0, 0.9);
+  
+  /* Soft borders with transparency */
+  --os-color-window-border: rgba(255, 255, 255, 0.3);
+  --os-color-window-border-inactive: rgba(200, 200, 200, 0.2);
+  
+  /* Title bar - glass effect */
+  --os-color-titlebar-border: rgba(255, 255, 255, 0.4);
+  --os-color-titlebar-border-inactive: rgba(255, 255, 255, 0.2);
+  --os-color-titlebar-border-bottom: rgba(0, 0, 0, 0.08);
+  --os-color-titlebar-active-bg: linear-gradient(
+    to bottom,
+    rgba(250, 250, 250, 0.8) 0%,
+    rgba(235, 235, 235, 0.75) 100%
+  );
+  --os-color-titlebar-inactive-bg: rgba(245, 245, 245, 0.6);
+  --os-color-titlebar-text: rgba(0, 0, 0, 0.9);
+  --os-color-titlebar-text-inactive: rgba(0, 0, 0, 0.45);
+  
+  /* Glass button effect */
+  --os-color-button-face: rgba(255, 255, 255, 0.6);
+  --os-color-button-highlight: rgba(255, 255, 255, 0.9);
+  --os-color-button-shadow: rgba(0, 0, 0, 0.15);
+  --os-color-button-active-face: rgba(240, 240, 240, 0.8);
+  
+  /* Softer, muted traffic lights with subtle glow */
+  --os-color-traffic-light-close: #FF6B6B;
+  --os-color-traffic-light-close-hover: #FF5252;
+  --os-color-traffic-light-minimize: #FFD93D;
+  --os-color-traffic-light-minimize-hover: #FFC107;
+  --os-color-traffic-light-maximize: #6BCF7F;
+  --os-color-traffic-light-maximize-hover: #4CAF50;
+  
+  /* Vibrant but translucent selection */
+  --os-color-selection-bg: rgba(100, 150, 255, 0.6);
+  --os-color-selection-text: #ffffff;
+  --os-color-selection-glow: rgba(100, 150, 255, 0.4);
+  
+  /* Text hierarchy for clarity */
+  --os-color-text-primary: rgba(0, 0, 0, 0.9);
+  --os-color-text-secondary: rgba(0, 0, 0, 0.6);
+  --os-color-text-disabled: rgba(0, 0, 0, 0.35);
+  
+  /* Modern metrics */
+  --os-metrics-border-width: 0.5px;
+  --os-metrics-titlebar-border-width: 0.5px;
+  --os-metrics-radius: 1rem; /* 16px - more rounded than Aqua */
+  --os-metrics-titlebar-height: 2.5rem; /* 40px - taller for breathing room */
+  --os-metrics-titlebar-radius: 1rem 1rem 0 0; /* 16px rounded top */
+  --os-metrics-menubar-height: 2.5rem; /* 40px */
+  
+  /* Soft, layered shadows for depth */
+  --os-window-shadow: 0 8px 32px rgba(0, 0, 0, 0.12), 
+    0 2px 8px rgba(0, 0, 0, 0.08);
+  
+  /* Backdrop blur for glass effect */
+  --os-backdrop-blur: blur(12px);
+  --os-backdrop-blur-strong: blur(20px);
+  
+  /* Glass patterns - subtle overlays */
+  --os-pinstripe-titlebar: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.1) 0%,
+    rgba(255, 255, 255, 0.05) 50%,
+    rgba(0, 0, 0, 0.02) 100%
+  );
+  --os-pinstripe-window: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.05) 0%,
+    rgba(255, 255, 255, 0.02) 100%
+  );
+  --os-pinstripe-menubar: linear-gradient(
+    to bottom,
+    rgba(255, 255, 255, 0.15) 0%,
+    rgba(255, 255, 255, 0.05) 100%
+  );
+}
+
 /* Backwards compatibility aliases */
 .bg-system7-window-bg {
   background: var(--os-color-window-bg);
@@ -360,6 +453,163 @@
 .aqua-button.secondary {
   text-shadow: 0 2px 2px rgba(0, 0, 0, 0.25);
   color: black;
+}
+
+/* Timeless Theme Styles - Glass & Fluid Motion */
+
+/* Timeless Glass Button */
+.timeless-button {
+  line-height: 1;
+  height: 36px;
+  padding: 0 20px;
+  min-width: auto;
+  border-radius: 12px;
+  position: relative;
+  overflow: hidden;
+  cursor: pointer;
+  outline: none;
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  white-space: nowrap;
+  -webkit-font-smoothing: antialiased;
+  font-smooth: auto;
+  font-weight: 500;
+  font-size: 14px;
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+  backdrop-filter: var(--os-backdrop-blur);
+  -webkit-backdrop-filter: var(--os-backdrop-blur);
+}
+
+.timeless-button.primary {
+  background: rgba(100, 150, 255, 0.7);
+  border: 0.5px solid rgba(100, 150, 255, 0.3);
+  color: #ffffff;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+  box-shadow: 0 4px 12px rgba(100, 150, 255, 0.3),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.3);
+}
+
+.timeless-button.primary:hover {
+  background: rgba(100, 150, 255, 0.85);
+  box-shadow: 0 6px 16px rgba(100, 150, 255, 0.4),
+    0 2px 4px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+  transform: translateY(-1px);
+}
+
+.timeless-button.primary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(100, 150, 255, 0.3),
+    0 1px 2px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.2);
+}
+
+.timeless-button.secondary {
+  background: rgba(255, 255, 255, 0.6);
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  color: rgba(0, 0, 0, 0.9);
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+.timeless-button.secondary:hover {
+  background: rgba(255, 255, 255, 0.75);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.1),
+    0 2px 4px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+  transform: translateY(-1px);
+}
+
+.timeless-button.secondary:active {
+  transform: translateY(0);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.08),
+    0 1px 2px rgba(0, 0, 0, 0.05),
+    inset 0 1px 0 rgba(255, 255, 255, 0.4);
+}
+
+/* Timeless Glass Effect Utility */
+.timeless-glass {
+  background: rgba(255, 255, 255, 0.7);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 0.5px solid rgba(255, 255, 255, 0.3);
+  box-shadow: 0 8px 32px rgba(0, 0, 0, 0.12),
+    0 2px 8px rgba(0, 0, 0, 0.08),
+    inset 0 1px 0 rgba(255, 255, 255, 0.5);
+}
+
+/* Timeless Glass Effect - Strong */
+.timeless-glass-strong {
+  background: rgba(255, 255, 255, 0.85);
+  backdrop-filter: blur(20px);
+  -webkit-backdrop-filter: blur(20px);
+  border: 0.5px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 12px 48px rgba(0, 0, 0, 0.15),
+    0 4px 12px rgba(0, 0, 0, 0.1),
+    inset 0 1px 0 rgba(255, 255, 255, 0.6);
+}
+
+/* Timeless Glow Effect */
+.timeless-glow {
+  position: relative;
+}
+
+.timeless-glow::before {
+  content: "";
+  position: absolute;
+  inset: -2px;
+  border-radius: inherit;
+  padding: 2px;
+  background: linear-gradient(
+    135deg,
+    rgba(100, 150, 255, 0.4),
+    rgba(150, 100, 255, 0.2)
+  );
+  -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+  -webkit-mask-composite: xor;
+  mask-composite: exclude;
+  opacity: 0;
+  transition: opacity 0.3s ease;
+}
+
+.timeless-glow:hover::before,
+.timeless-glow:focus::before {
+  opacity: 1;
+}
+
+/* Timeless Fluid Animation Easing */
+.timeless-fluid {
+  transition: all 0.5s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.timeless-fluid-fast {
+  transition: all 0.3s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+.timeless-fluid-slow {
+  transition: all 0.7s cubic-bezier(0.34, 1.56, 0.64, 1);
+}
+
+/* Timeless Window Backdrop Effect */
+:root[data-os-theme="timeless"] .window {
+  backdrop-filter: var(--os-backdrop-blur);
+  -webkit-backdrop-filter: var(--os-backdrop-blur);
+}
+
+/* Timeless Font Smoothing */
+:root[data-os-theme="timeless"] body {
+  font-family: var(--os-font-ui) !important;
+  -webkit-font-smoothing: antialiased !important;
+  font-smooth: auto !important;
+  font-size: 14px !important;
+}
+
+:root[data-os-theme="timeless"] * {
+  font-family: inherit;
 }
 
 /* macOS Theme Font Overrides */
