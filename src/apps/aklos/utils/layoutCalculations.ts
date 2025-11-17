@@ -1,4 +1,4 @@
-import { Block } from "../types";
+import { Block, Article } from "../types";
 
 export interface Position {
   x: number;
@@ -73,16 +73,18 @@ export function calculateFocusedPositions(
     return { positions, scales, zIndices };
   }
 
-  const FOCUSED_X = 250;
-  const FOCUSED_Y = 150;
-  const SIDEBAR_X = 750;
+  const BLOCK_WIDTH = 360;
+  const SIDEBAR_X = window.innerWidth - BLOCK_WIDTH - 50; // Position sidebar on the right with margin
   const SIDEBAR_START_Y = 50;
   const GAP = 30; // Gap between blocks
   const SMALL_SCALE = 0.6;
 
   const backgroundBlocks = blocks.filter(b => b.id !== focusedBlock.id);
 
-  // Position focused block
+  // Center the focused block in the viewport
+  const FOCUSED_X = (window.innerWidth - BLOCK_WIDTH) / 2;
+  const FOCUSED_Y = (window.innerHeight - 400) / 2; // Approximate block height
+  
   positions[focusedBlock.id] = { x: FOCUSED_X, y: FOCUSED_Y };
   scales[focusedBlock.id] = 1;
   zIndices[focusedBlock.id] = 1000;
@@ -97,6 +99,63 @@ export function calculateFocusedPositions(
     // Move Y down by this block's height + gap for next block
     const blockHeight = calculateBlockHeight(block, SMALL_SCALE);
     currentY += blockHeight + GAP;
+  });
+
+  return { positions, scales, zIndices };
+}
+
+/**
+ * Calculate layout for focused article view
+ * One article is centered and large, others are small on the right
+ */
+export function calculateFocusedArticlePositions(
+  articles: Article[],
+  focusedArticleId: string | null
+): {
+  positions: Record<string, Position>;
+  scales: Record<string, number>;
+  zIndices: Record<string, number>;
+} {
+  const positions: Record<string, Position> = {};
+  const scales: Record<string, number> = {};
+  const zIndices: Record<string, number> = {};
+
+  // Determine which article should be focused
+  const focusedArticle = focusedArticleId
+    ? articles.find((a) => a.id === focusedArticleId)
+    : articles[0];
+
+  if (!focusedArticle) {
+    return { positions, scales, zIndices };
+  }
+
+  const ARTICLE_CARD_WIDTH = 600;
+  const SIDEBAR_X = window.innerWidth - ARTICLE_CARD_WIDTH * 0.6 - 50;
+  const SIDEBAR_START_Y = 50;
+  const GAP = 30;
+  const SMALL_SCALE = 0.6;
+
+  const backgroundArticles = articles.filter(a => a.id !== focusedArticle.id);
+
+  // Center the focused article
+  const FOCUSED_X = (window.innerWidth - ARTICLE_CARD_WIDTH) / 2;
+  const FOCUSED_Y = (window.innerHeight - 500) / 2; // Approximate article card height
+  
+  positions[focusedArticle.id] = { x: FOCUSED_X, y: FOCUSED_Y };
+  scales[focusedArticle.id] = 1;
+  zIndices[focusedArticle.id] = 1000;
+
+  // Position background articles in a vertical list on the right
+  // Use fixed spacing to ensure no overlap
+  const FIXED_ARTICLE_SPACING = 300; // Fixed spacing per article slot
+  
+  backgroundArticles.forEach((article, index) => {
+    positions[article.id] = { 
+      x: SIDEBAR_X, 
+      y: SIDEBAR_START_Y + (index * FIXED_ARTICLE_SPACING) 
+    };
+    scales[article.id] = SMALL_SCALE;
+    zIndices[article.id] = 100 + (backgroundArticles.length - index);
   });
 
   return { positions, scales, zIndices };

@@ -6,7 +6,8 @@ import { ActionBar } from "./components/ActionBar";
 import { AklosMenuBar } from "./components/AklosMenuBar";
 import { LayoutMode } from "./components/LayoutControls";
 import { generateMockBlocks, generateNewBlock } from "./utils/mockBlocks";
-import { calculateGridPositions, calculateFocusedPositions } from "./utils/layoutCalculations";
+import { calculateFocusedArticlePositions } from "./utils/layoutCalculations";
+import { ArticleCard } from "./components/ArticleCard";
 import { Block, ActionBarMode } from "./types";
 import { AppProps, BaseApp } from "../base/types";
 import { useThemeStore } from "@/stores/useThemeStore";
@@ -24,10 +25,15 @@ function AklosAppComponent({
   const [blocks, setBlocks] = useState<Block[]>(generateMockBlocks());
   const [selectedBlockId, setSelectedBlockId] = useState<string | null>(null);
   const [blockOrder, setBlockOrder] = useState<string[]>([]);
-  const [layoutMode, setLayoutMode] = useState<LayoutMode>("spatial");
+  const [layoutMode, setLayoutMode] = useState<LayoutMode>("home");
   const [blockScales, setBlockScales] = useState<Record<string, number>>({});
   const [layoutZIndices, setLayoutZIndices] = useState<Record<string, number>>({});
   const [focusedViewOrder, setFocusedViewOrder] = useState<string[]>([]); // Track order for focused view stack
+  const [selectedArticleId, setSelectedArticleId] = useState<string | null>(null); // Track selected article in focused mode
+  const [articlePositions, setArticlePositions] = useState<Record<string, { x: number; y: number }>>({});
+  const [articleScales, setArticleScales] = useState<Record<string, number>>({});
+  const [articleZIndices, setArticleZIndices] = useState<Record<string, number>>({});
+  const [isTransitioning, setIsTransitioning] = useState(false);
   const [isFullscreen, setIsFullscreen] = useState(true); // Auto-open in fullscreen
   const previousSizeRef = useRef<{ width: number; height: number } | null>(null);
   const previousPositionRef = useRef<{ x: number; y: number } | null>(null);
@@ -96,21 +102,66 @@ function AklosAppComponent({
   };
 
   const handleSelectBlock = (blockId: string) => {
-    if (layoutMode === "focused" && selectedBlockId && selectedBlockId !== blockId) {
-      // In focused mode, when switching focus, move the old focused block to the end of the list
-      setFocusedViewOrder(prev => {
-        // Remove the newly selected block (it's becoming focused)
-        // Keep all other blocks in their order, and add the old focused block to the end
-        const withoutNewSelection = prev.filter(id => id !== blockId);
-        const withoutBoth = withoutNewSelection.filter(id => id !== selectedBlockId);
-        return [...withoutBoth, selectedBlockId];
-      });
+    // When clicking a block in home mode, enter focused mode and show its articles
+    if (layoutMode === "home") {
+      setSelectedBlockId(blockId);
+      setLayoutMode("focused");
+      // Select the first article of the block
+      const block = blocks.find(b => b.id === blockId);
+      if (block && block.articles.length > 0) {
+        setSelectedArticleId(block.articles[0].id);
+        // Initialize focused view order with all article IDs except the first
+        setFocusedViewOrder(block.articles.slice(1).map(a => a.id));
+      }
+    } else if (layoutMode === "focused") {
+      // In focused mode, this is selecting a different block (switching between blocks)
+      // For now we'll just update the selected block
+      if (selectedBlockId && selectedBlockId !== blockId) {
+        setFocusedViewOrder(prev => {
+          const withoutNewSelection = prev.filter(id => id !== blockId);
+          const withoutBoth = withoutNewSelection.filter(id => id !== selectedBlockId);
+          return [...withoutBoth, selectedBlockId];
+        });
+      } else if (!selectedBlockId) {
+        setFocusedViewOrder(prev => {
+          const defaultFocusedBlock = prev[0];
+          if (defaultFocusedBlock && defaultFocusedBlock !== blockId) {
+            const withoutClicked = prev.filter(id => id !== blockId);
+            const withoutBoth = withoutClicked.filter(id => id !== defaultFocusedBlock);
+            return [...withoutBoth, defaultFocusedBlock];
+          }
+          return prev.filter(id => id !== blockId);
+        });
+      }
+      setSelectedBlockId(blockId);
     }
-    setSelectedBlockId(blockId);
   };
 
   const handleDeselectBlock = () => {
     setSelectedBlockId(null);
+  };
+
+  const handleSelectArticle = (articleId: string) => {
+    if (layoutMode === "focused" && selectedArticleId && selectedArticleId !== articleId) {
+      // Switching focus: move the old focused article to the end of the list
+      setFocusedViewOrder(prev => {
+        const withoutNewSelection = prev.filter(id => id !== articleId);
+        const withoutBoth = withoutNewSelection.filter(id => id !== selectedArticleId);
+        return [...withoutBoth, selectedArticleId];
+      });
+    } else if (layoutMode === "focused" && !selectedArticleId) {
+      // First time selecting
+      setFocusedViewOrder(prev => {
+        const defaultFocusedArticle = focusedBlockArticles[0]?.id;
+        if (defaultFocusedArticle && defaultFocusedArticle !== articleId) {
+          const withoutClicked = prev.filter(id => id !== articleId);
+          const withoutBoth = withoutClicked.filter(id => id !== defaultFocusedArticle);
+          return [...withoutBoth, defaultFocusedArticle];
+        }
+        return prev.filter(id => id !== articleId);
+      });
+    }
+    setSelectedArticleId(articleId);
   };
 
   const handleBlockPositionChange = useCallback(
@@ -131,48 +182,71 @@ function AklosAppComponent({
     });
   }, []);
 
+  // Get articles for focused mode
+  const focusedBlockArticles = selectedBlockId
+    ? blocks.find(b => b.id === selectedBlockId)?.articles || []
+    : [];
+
   // Apply layout when mode or selection changes
   useEffect(() => {
-    if (layoutMode === "grid") {
-      const newPositions = calculateGridPositions(blocks);
-      setBlocks((prev) =>
-        prev.map((block) => ({
-          ...block,
-          position: newPositions[block.id] || block.position,
-        }))
-      );
+    if (layoutMode === "home") {
+      // Home mode - spatial view with blocks
       setBlockScales({});
       setLayoutZIndices({});
-    } else if (layoutMode === "focused") {
-      // Reorder blocks based on focusedViewOrder for the vertical stack
-      const orderedBlockIds = [...focusedViewOrder];
-      const orderedBlocks = orderedBlockIds
-        .map(id => blocks.find(b => b.id === id))
-        .filter((b): b is Block => b !== undefined);
-      
-      // Make sure all blocks are included
-      const missingBlocks = blocks.filter(b => !orderedBlockIds.includes(b.id));
-      const allOrderedBlocks = [...orderedBlocks, ...missingBlocks];
-      
-      const { positions, scales, zIndices } = calculateFocusedPositions(allOrderedBlocks, selectedBlockId);
-      setBlocks((prev) =>
-        prev.map((block) => ({
-          ...block,
-          position: positions[block.id] || block.position,
-        }))
-      );
-      setBlockScales(scales);
-      setLayoutZIndices(zIndices);
-    } else {
-      // Spatial mode - reset scales and layout z-indices
-      setBlockScales({});
-      setLayoutZIndices({});
+      // Clear article positions when leaving focused mode
+      setArticlePositions({});
+      setArticleScales({});
+      setArticleZIndices({});
     }
-  }, [layoutMode, selectedBlockId, blocks.length, focusedViewOrder]);
+  }, [layoutMode]);
+
+  // Update article positions when in focused mode and article order/selection changes
+  useEffect(() => {
+    if (layoutMode === "focused" && focusedBlockArticles.length > 0) {
+      const orderedArticleIds = [...focusedViewOrder];
+      const orderedArticles = orderedArticleIds
+        .map(id => focusedBlockArticles.find(a => a.id === id))
+        .filter((a): a is NonNullable<typeof a> => a !== undefined);
+      const missingArticles = focusedBlockArticles.filter(a => !orderedArticleIds.includes(a.id));
+      const allOrderedArticles = [...orderedArticles, ...missingArticles];
+      
+      const layout = calculateFocusedArticlePositions(allOrderedArticles, selectedArticleId);
+      
+      // Use requestAnimationFrame to ensure smooth transition
+      requestAnimationFrame(() => {
+        setArticlePositions(layout.positions);
+        setArticleScales(layout.scales);
+        setArticleZIndices(layout.zIndices);
+      });
+    }
+  }, [layoutMode, focusedBlockArticles, focusedViewOrder, selectedArticleId]);
 
   const handleLayoutModeChange = useCallback((mode: LayoutMode) => {
-    setLayoutMode(mode);
-  }, []);
+    // Start transition
+    setIsTransitioning(true);
+    
+    // Small delay to allow fade out
+    setTimeout(() => {
+      if (mode === "home") {
+        // Return to home view
+        setLayoutMode("home");
+        setSelectedArticleId(null);
+      } else if (mode === "focused") {
+        // Enter focused mode - need a selected block
+        if (selectedBlockId) {
+          setLayoutMode("focused");
+          const block = blocks.find(b => b.id === selectedBlockId);
+          if (block && block.articles.length > 0 && !selectedArticleId) {
+            setSelectedArticleId(block.articles[0].id);
+            setFocusedViewOrder(block.articles.slice(1).map(a => a.id));
+          }
+        }
+      }
+      
+      // End transition after content changes
+      setTimeout(() => setIsTransitioning(false), 50);
+    }, 150);
+  }, [selectedBlockId, blocks, selectedArticleId]);
 
   const toggleFullscreen = useCallback(() => {
     if (!isFullscreen) {
@@ -237,6 +311,14 @@ function AklosAppComponent({
 
   if (!isWindowOpen) return null;
 
+  // Get all ordered articles for rendering
+  const orderedArticleIds = [...focusedViewOrder];
+  const orderedArticles = orderedArticleIds
+    .map(id => focusedBlockArticles.find(a => a.id === id))
+    .filter((a): a is NonNullable<typeof a> => a !== undefined);
+  const missingArticles = focusedBlockArticles.filter(a => !orderedArticleIds.includes(a.id));
+  const allOrderedArticles = [...orderedArticles, ...missingArticles];
+
   // Fullscreen portal - render directly to body to bypass all ryOS constraints
   const fullscreenPortal = isFullscreen
     ? createPortal(
@@ -247,21 +329,98 @@ function AklosAppComponent({
             background: "linear-gradient(180deg, #E2E2E2 0%, #D0D0D0 68%, #A2A9B2 100%)",
           }}
         >
-          {/* Spatial Canvas */}
-          <SpatialCanvas
-            blocks={blocks}
-            selectedBlockId={selectedBlockId}
-            onSelectBlock={handleSelectBlock}
-            onDeselectBlock={handleDeselectBlock}
-            onBlockPositionChange={handleBlockPositionChange}
-            onBlockInteraction={handleBlockInteraction}
-            blockOrder={blockOrder}
-            layoutMode={layoutMode}
-            blockScales={blockScales}
-            layoutZIndices={layoutZIndices}
-            onLayoutModeChange={handleLayoutModeChange}
-            hideControls={false}
-          />
+          {/* Content: either blocks or articles depending on mode */}
+          <div
+            style={{
+              width: "100%",
+              height: "100%",
+              opacity: isTransitioning ? 0 : 1,
+              transform: isTransitioning ? "scale(0.98)" : "scale(1)",
+              transition: "opacity 0.2s ease-out, transform 0.2s ease-out",
+            }}
+          >
+            {layoutMode === "home" ? (
+              <SpatialCanvas
+                blocks={blocks}
+                selectedBlockId={selectedBlockId}
+                onSelectBlock={handleSelectBlock}
+                onDeselectBlock={handleDeselectBlock}
+                onBlockPositionChange={handleBlockPositionChange}
+                onBlockInteraction={handleBlockInteraction}
+                blockOrder={blockOrder}
+                layoutMode={layoutMode}
+                blockScales={blockScales}
+                layoutZIndices={layoutZIndices}
+                onLayoutModeChange={handleLayoutModeChange}
+                hideControls={false}
+              />
+            ) : (
+            /* Focused article view */
+            <div className="relative w-full h-full">
+              {/* Layout Controls */}
+              <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+                <div className="pointer-events-auto">
+                  {/* Import LayoutControls inline */}
+                  <div
+                    className="absolute top-4 left-4 z-10 rounded-lg overflow-hidden"
+                    style={{
+                      background: "rgba(248, 248, 248, 0.75)",
+                      backgroundImage: "var(--os-pinstripe-menubar)",
+                      backdropFilter: "blur(10px)",
+                      WebkitBackdropFilter: "blur(10px)",
+                      border: "1px solid rgba(0, 0, 0, 0.18)",
+                      boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                    }}
+                  >
+                    <div className="flex">
+                      <button
+                        onClick={() => handleLayoutModeChange("home")}
+                        className="px-3 py-2 flex items-center gap-2 transition-all"
+                        style={{
+                          backgroundColor: "transparent",
+                          color: "var(--os-color-text-primary)",
+                          fontFamily: "var(--os-font-ui)",
+                          fontSize: "11px",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Home
+                      </button>
+                      <button
+                        onClick={() => handleLayoutModeChange("focused")}
+                        className="px-3 py-2 flex items-center gap-2 transition-all"
+                        style={{
+                          backgroundColor: "var(--os-color-selection-bg)",
+                          color: "#FFFFFF",
+                          fontFamily: "var(--os-font-ui)",
+                          fontSize: "11px",
+                          border: "none",
+                          cursor: "pointer",
+                        }}
+                      >
+                        Focused
+                      </button>
+                    </div>
+                  </div>
+                </div>
+              </div>
+              
+              {/* Render article cards */}
+              {allOrderedArticles.map((article) => (
+                <ArticleCard
+                  key={article.id}
+                  article={article}
+                  isSelected={selectedArticleId === article.id}
+                  onSelect={() => handleSelectArticle(article.id)}
+                  scale={articleScales[article.id] || 1}
+                  position={articlePositions[article.id] || { x: 0, y: 0 }}
+                  zIndex={articleZIndices[article.id] || 1}
+                />
+              ))}
+            </div>
+            )}
+          </div>
 
           {/* Action Bar */}
           <ActionBar
@@ -312,21 +471,97 @@ function AklosAppComponent({
             menuBar={isXpTheme ? menuBar : undefined}
           >
             <div className="relative w-full h-full flex flex-col">
-              {/* Spatial Canvas */}
-              <SpatialCanvas
-                blocks={blocks}
-                selectedBlockId={selectedBlockId}
-                onSelectBlock={handleSelectBlock}
-                onDeselectBlock={handleDeselectBlock}
-                onBlockPositionChange={handleBlockPositionChange}
-                onBlockInteraction={handleBlockInteraction}
-                blockOrder={blockOrder}
-                layoutMode={layoutMode}
-                blockScales={blockScales}
-                layoutZIndices={layoutZIndices}
-                onLayoutModeChange={handleLayoutModeChange}
-                hideControls={false}
-              />
+              {/* Content: either blocks or articles depending on mode */}
+              <div
+                style={{
+                  width: "100%",
+                  height: "100%",
+                  opacity: isTransitioning ? 0 : 1,
+                  transform: isTransitioning ? "scale(0.98)" : "scale(1)",
+                  transition: "opacity 0.2s ease-out, transform 0.2s ease-out",
+                }}
+              >
+                {layoutMode === "home" ? (
+                  <SpatialCanvas
+                    blocks={blocks}
+                    selectedBlockId={selectedBlockId}
+                    onSelectBlock={handleSelectBlock}
+                    onDeselectBlock={handleDeselectBlock}
+                    onBlockPositionChange={handleBlockPositionChange}
+                    onBlockInteraction={handleBlockInteraction}
+                    blockOrder={blockOrder}
+                    layoutMode={layoutMode}
+                    blockScales={blockScales}
+                    layoutZIndices={layoutZIndices}
+                    onLayoutModeChange={handleLayoutModeChange}
+                    hideControls={false}
+                  />
+                ) : (
+                /* Focused article view */
+                <div className="relative w-full h-full">
+                  {/* Layout Controls */}
+                  <div className="absolute top-0 left-0 right-0 bottom-0 pointer-events-none">
+                    <div className="pointer-events-auto">
+                      <div
+                        className="absolute top-4 left-4 z-10 rounded-lg overflow-hidden"
+                        style={{
+                          background: "rgba(248, 248, 248, 0.75)",
+                          backgroundImage: "var(--os-pinstripe-menubar)",
+                          backdropFilter: "blur(10px)",
+                          WebkitBackdropFilter: "blur(10px)",
+                          border: "1px solid rgba(0, 0, 0, 0.18)",
+                          boxShadow: "0 2px 8px rgba(0, 0, 0, 0.15)",
+                        }}
+                      >
+                        <div className="flex">
+                          <button
+                            onClick={() => handleLayoutModeChange("home")}
+                            className="px-3 py-2 flex items-center gap-2 transition-all"
+                            style={{
+                              backgroundColor: "transparent",
+                              color: "var(--os-color-text-primary)",
+                              fontFamily: "var(--os-font-ui)",
+                              fontSize: "11px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Home
+                          </button>
+                          <button
+                            onClick={() => handleLayoutModeChange("focused")}
+                            className="px-3 py-2 flex items-center gap-2 transition-all"
+                            style={{
+                              backgroundColor: "var(--os-color-selection-bg)",
+                              color: "#FFFFFF",
+                              fontFamily: "var(--os-font-ui)",
+                              fontSize: "11px",
+                              border: "none",
+                              cursor: "pointer",
+                            }}
+                          >
+                            Focused
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                  
+                  {/* Render article cards */}
+                  {allOrderedArticles.map((article) => (
+                    <ArticleCard
+                      key={article.id}
+                      article={article}
+                      isSelected={selectedArticleId === article.id}
+                      onSelect={() => handleSelectArticle(article.id)}
+                      scale={articleScales[article.id] || 1}
+                      position={articlePositions[article.id] || { x: 0, y: 0 }}
+                      zIndex={articleZIndices[article.id] || 1}
+                    />
+                  ))}
+                </div>
+                )}
+              </div>
 
               {/* Action Bar */}
               <ActionBar
