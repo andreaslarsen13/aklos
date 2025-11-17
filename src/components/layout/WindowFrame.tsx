@@ -108,17 +108,18 @@ export function WindowFrame({
   // Get current theme
   const currentTheme = useThemeStore((state) => state.current);
   const isXpTheme = currentTheme === "xp" || currentTheme === "win98";
+  const isMacLikeTheme = currentTheme === "macosx" || currentTheme === "timeless";
   const theme = getTheme(currentTheme);
   // Treat all macOS windows as using a transparent outer background so titlebar/content can be styled separately
   const effectiveTransparentBackground =
-    currentTheme === "macosx" ? true : transparentBackground;
+    isMacLikeTheme ? true : transparentBackground;
 
   // Theme-aware z-index for resizer layer:
-  // - macOSX: above titlebar (no controls in top-right)
+  // - macOSX/Timeless: above titlebar (no controls in top-right)
   // - XP/Win98: below titlebar controls (avoid occluding close button)
   // - Others: default above content
   const resizerZIndexClass =
-    currentTheme === "macosx" ? "z-[60]" : isXpTheme ? "z-40" : "z-50";
+    isMacLikeTheme ? "z-[60]" : isXpTheme ? "z-40" : "z-50";
 
   // Setup swipe navigation for phones only
   const {
@@ -239,9 +240,9 @@ export function WindowFrame({
   const computeInsets = useCallback(() => {
     const safe = getSafeAreaBottomInset();
     const menuBarHeight =
-      currentTheme === "system7" ? 30 : currentTheme === "macosx" ? 25 : 0;
+      currentTheme === "system7" ? 30 : isMacLikeTheme ? 25 : 0;
     const taskbarHeight = isXpTheme ? 30 : 0;
-    const dockHeight = currentTheme === "macosx" ? 56 : 0; // Dock visual height
+    const dockHeight = isMacLikeTheme ? 56 : 0; // Dock visual height
     const topInset = menuBarHeight;
     const bottomInset = taskbarHeight + dockHeight + safe;
     return {
@@ -606,8 +607,8 @@ export function WindowFrame({
                 : isMobile
                 ? isXpTheme
                   ? "top-0 h-4" // Start from top but be shorter for XP/98 themes
-                  : currentTheme === "macosx"
-                  ? "top-1 h-2" // Extend above window for macOS to avoid traffic lights
+                  : isMacLikeTheme
+                  ? "top-1 h-2" // Extend above window for macOS/Timeless to avoid traffic lights
                   : "top-0 h-8"
                 : "top-1 h-2"
             )}
@@ -843,8 +844,8 @@ export function WindowFrame({
                 />
               </div>
             </div>
-          ) : currentTheme === "macosx" ? (
-            // Mac OS X theme title bar with traffic light buttons
+          ) : isMacLikeTheme ? (
+            // Mac OS X / Timeless theme title bar with traffic light buttons
             <div
               className={cn(
                 "title-bar flex items-center shrink-0 h-6 min-h-[1.25rem] mx-0 mb-0 px-[0.1rem] py-[0.1rem] select-none cursor-move user-select-none z-50 draggable-area",
@@ -916,11 +917,21 @@ export function WindowFrame({
                       width: "13px",
                       height: "13px",
                       background: isForeground
-                        ? "linear-gradient(rgb(193, 58, 45), rgb(205, 73, 52))"
+                        ? currentTheme === "timeless"
+                          ? "linear-gradient(rgba(255, 107, 107, 0.9), rgba(255, 82, 82, 0.95))"
+                          : "linear-gradient(rgb(193, 58, 45), rgb(205, 73, 52))"
                         : "linear-gradient(rgba(160, 160, 160, 0.625), rgba(255, 255, 255, 0.625))",
                       boxShadow: isForeground
-                        ? "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(225, 70, 64, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgba(150, 40, 30, 0.8) 0px 1px 3px inset, rgba(225, 70, 64, 0.75) 0px 2px 3px 1px inset"
+                        ? currentTheme === "timeless"
+                          ? "0 2px 6px rgba(255, 107, 107, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 0 0 0.5px rgba(255, 255, 255, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5)"
+                          : "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(225, 70, 64, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgba(150, 40, 30, 0.8) 0px 1px 3px inset, rgba(225, 70, 64, 0.75) 0px 2px 3px 1px inset"
                         : "0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 2px 3px 1px #bbbbbb",
+                      ...(currentTheme === "timeless" && isForeground
+                        ? {
+                            backdropFilter: "blur(4px)",
+                            WebkitBackdropFilter: "blur(4px)",
+                          }
+                        : {}),
                     }}
                   >
                     {/* Top shine */}
@@ -979,11 +990,21 @@ export function WindowFrame({
                     width: "13px",
                     height: "13px",
                     background: isForeground
-                      ? "linear-gradient(rgb(202, 130, 13), rgb(253, 253, 149))"
+                      ? currentTheme === "timeless"
+                        ? "linear-gradient(rgba(255, 217, 61, 0.9), rgba(255, 193, 7, 0.95))"
+                        : "linear-gradient(rgb(202, 130, 13), rgb(253, 253, 149))"
                       : "linear-gradient(rgba(160, 160, 160, 0.625), rgba(255, 255, 255, 0.625))",
                     boxShadow: isForeground
-                      ? "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(223, 161, 35, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(155, 78, 21) 0px 1px 3px inset, rgb(241, 157, 20) 0px 2px 3px 1px inset"
+                      ? currentTheme === "timeless"
+                        ? "0 2px 6px rgba(255, 217, 61, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 0 0 0.5px rgba(255, 255, 255, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5)"
+                        : "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgba(223, 161, 35, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(155, 78, 21) 0px 1px 3px inset, rgb(241, 157, 20) 0px 2px 3px 1px inset"
                       : "0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 2px 3px 1px #bbbbbb",
+                    ...(currentTheme === "timeless" && isForeground
+                      ? {
+                          backdropFilter: "blur(4px)",
+                          WebkitBackdropFilter: "blur(4px)",
+                        }
+                      : {}),
                   }}
                   aria-label="Minimize"
                 >
@@ -1028,11 +1049,21 @@ export function WindowFrame({
                       width: "13px",
                       height: "13px",
                       background: isForeground
-                        ? "linear-gradient(rgb(111, 174, 58), rgb(138, 192, 50))"
+                        ? currentTheme === "timeless"
+                          ? "linear-gradient(rgba(107, 207, 127, 0.9), rgba(76, 175, 80, 0.95))"
+                          : "linear-gradient(rgb(111, 174, 58), rgb(138, 192, 50))"
                         : "linear-gradient(rgba(160, 160, 160, 0.625), rgba(255, 255, 255, 0.625))",
                       boxShadow: isForeground
-                        ? "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgb(59, 173, 29, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(53, 91, 17) 0px 1px 3px inset, rgb(98, 187, 19) 0px 2px 3px 1px inset"
+                        ? currentTheme === "timeless"
+                          ? "0 2px 6px rgba(107, 207, 127, 0.4), 0 1px 2px rgba(0, 0, 0, 0.2), inset 0 0 0 0.5px rgba(255, 255, 255, 0.3), inset 0 1px 2px rgba(255, 255, 255, 0.5)"
+                          : "rgba(0, 0, 0, 0.5) 0px 2px 4px, rgba(0, 0, 0, 0.4) 0px 1px 2px, rgb(59, 173, 29, 0.5) 0px 1px 1px, rgba(0, 0, 0, 0.3) 0px 0px 0px 0.5px inset, rgb(53, 91, 17) 0px 1px 3px inset, rgb(98, 187, 19) 0px 2px 3px 1px inset"
                         : "0 2px 3px rgba(0, 0, 0, 0.2), 0 1px 1px rgba(0, 0, 0, 0.3), inset 0 0 0 0.5px rgba(0, 0, 0, 0.3), inset 0 1px 2px rgba(0, 0, 0, 0.4), inset 0 2px 3px 1px #bbbbbb",
+                      ...(currentTheme === "timeless" && isForeground
+                        ? {
+                            backdropFilter: "blur(4px)",
+                            WebkitBackdropFilter: "blur(4px)",
+                          }
+                        : {}),
                     }}
                   >
                     {/* Top shine */}
@@ -1198,7 +1229,7 @@ export function WindowFrame({
             style={
               isXpTheme
                 ? { margin: currentTheme === "xp" ? "0px 3px" : "0" }
-                : currentTheme === "macosx"
+                : isMacLikeTheme
                 ? transparentBackground
                   ? undefined
                   : isForeground

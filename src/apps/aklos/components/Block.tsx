@@ -1,5 +1,4 @@
 import { Block as BlockType } from "../types";
-import { ArticleItem } from "./ArticleItem";
 import { useBlockDrag } from "../hooks/useBlockDrag";
 
 interface BlockProps {
@@ -55,7 +54,8 @@ export function Block({ block, isSelected, onSelect, onPositionChange, onInterac
       }`}
       style={{
         transform: `translate(${block.position.x}px, ${block.position.y}px) scale(${scale})`,
-        width: "360px",
+        width: "600px",
+        height: "250px",
         userSelect: "none",
         WebkitUserSelect: "none",
         willChange: isDragging ? "transform" : "auto",
@@ -82,74 +82,75 @@ export function Block({ block, isSelected, onSelect, onPositionChange, onInterac
           borderRadius: "var(--os-metrics-radius)",
           transform: isDragging ? "scale(1.02)" : "scale(1)",
           transition: isDragging ? "none" : "all 0.2s",
+          backgroundColor: "rgba(240, 240, 240, 0.6)",
+          backdropFilter: "blur(12px)",
+          WebkitBackdropFilter: "blur(12px)",
+          height: "100%",
         }}
       >
-        {/* Header with Aqua titlebar style */}
-        <div
-          className="px-4 py-3 border-b"
-          style={{
-            backgroundColor: "#f0f0f0",
-            background: "var(--os-color-titlebar-active-bg)",
-            borderBottom: "1px solid var(--os-color-titlebar-border)",
-          }}
-        >
-          <h3 
-            className="font-medium text-[13px] mb-0.5"
-            style={{ 
-              color: "var(--os-color-text-primary)",
-              textShadow: "0 2px 3px rgba(0, 0, 0, 0.25)",
-              fontFamily: "var(--os-font-ui)",
-            }}
-          >
-            {block.topic}
-          </h3>
-          <p 
-            className="text-[11px]"
-            style={{ 
-              color: "var(--os-color-text-secondary)",
-              fontFamily: "var(--os-font-ui)",
-            }}
-          >
-            {block.description}
-          </p>
-        </div>
-
-              {/* Articles with pinstripe background */}
+        {/* New card-stack layout */}
+        <div className="p-6 flex flex-col h-full">
+          {/* Title and count */}
+          <div className="mb-4">
+            <h3 
+              className="text-[18px] font-medium mb-1"
+              style={{ 
+                color: "var(--os-color-text-primary)",
+                fontFamily: "var(--os-font-ui)",
+              }}
+            >
+              {block.topic}
+            </h3>
+            <p 
+              className="text-[13px]"
+              style={{ 
+                color: "var(--os-color-text-secondary)",
+                fontFamily: "var(--os-font-ui)",
+              }}
+            >
+              {block.articles.length} article{block.articles.length !== 1 ? 's' : ''}
+            </p>
+          </div>
+          
+          {/* Stacked article preview cards */}
+          <div className="flex-1 relative flex items-center justify-center">
+            {block.articles.slice(0, 3).map((article, index) => (
               <div
-                className="max-h-96 overflow-y-auto"
+                key={article.id}
+                className="absolute rounded-lg shadow-lg overflow-hidden"
                 style={{
-                  backgroundColor: "var(--os-color-window-bg)",
-                  backgroundImage: "var(--os-pinstripe-window)",
+                  width: '280px',
+                  height: '140px',
+                  backgroundColor: 'white',
+                  transform: `translate(${index * 12}px, ${index * 8}px) rotate(${(index - 1) * 2}deg)`,
+                  zIndex: 3 - index,
+                  border: '1px solid rgba(0, 0, 0, 0.1)',
                 }}
               >
-                {block.articles.map((article) => (
-                  <ArticleItem
-                    key={article.id}
-                    article={article}
-                    onClick={(e) => {
-                      // In focused mode with small blocks, let clicks bubble up to focus the block
-                      if (layoutMode === "focused" && scale < 1) {
-                        return; // Don't stop propagation
-                      }
-                      // Otherwise, stop propagation for article-specific handling
-                      e.stopPropagation();
-                      // Future: Handle article-specific actions
+                {/* Text card content */}
+                <div className="p-3 bg-white h-full flex flex-col">
+                  <div 
+                    className="text-[10px] font-medium mb-1"
+                    style={{
+                      color: "var(--os-color-text-secondary)",
+                      fontFamily: "var(--os-font-ui)",
                     }}
-                  />
-                ))}
+                  >
+                    {article.source}
+                  </div>
+                  <div 
+                    className="text-[12px] line-clamp-3"
+                    style={{
+                      color: "var(--os-color-text-primary)",
+                      fontFamily: "var(--os-font-ui)",
+                    }}
+                  >
+                    {article.title}
+                  </div>
+                </div>
               </div>
-
-        {/* Footer */}
-        <div 
-          className="px-4 py-2 border-t text-[11px]"
-          style={{
-            backgroundColor: "var(--os-color-window-bg)",
-            borderTop: "1px solid var(--os-color-titlebar-border)",
-            color: "var(--os-color-text-secondary)",
-            fontFamily: "var(--os-font-ui)",
-          }}
-        >
-          {block.articles.length} article{block.articles.length !== 1 ? "s" : ""}
+            ))}
+          </div>
         </div>
       </div>
     </div>

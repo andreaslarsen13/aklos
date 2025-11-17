@@ -5,28 +5,11 @@ export interface Position {
   y: number;
 }
 
-/**
- * Calculate the height of a block based on its content
- */
-function calculateBlockHeight(block: Block, scale: number): number {
-  const HEADER_HEIGHT = 70;
-  const ARTICLE_HEIGHT = 100;
-  const FOOTER_HEIGHT = 35;
-  const MAX_ARTICLES_HEIGHT = 384; // max-h-96
-  
-  const articlesHeight = Math.min(
-    block.articles.length * ARTICLE_HEIGHT,
-    MAX_ARTICLES_HEIGHT
-  );
-  
-  return (HEADER_HEIGHT + articlesHeight + FOOTER_HEIGHT) * scale;
-}
-
 export function calculateGridPositions(blocks: Block[]): Record<string, Position> {
   const positions: Record<string, Position> = {};
   
-  const HORIZONTAL_SPACING = 400;
-  const VERTICAL_SPACING = 450;
+  const HORIZONTAL_SPACING = 650; // 600px block + 50px margin
+  const VERTICAL_SPACING = 300; // 250px block + 50px margin
   const START_X = 50;
   const START_Y = 50;
 
@@ -73,32 +56,31 @@ export function calculateFocusedPositions(
     return { positions, scales, zIndices };
   }
 
-  const BLOCK_WIDTH = 360;
+  const BLOCK_WIDTH = 600;
+  const BLOCK_HEIGHT = 250;
   const SIDEBAR_X = window.innerWidth - BLOCK_WIDTH - 50; // Position sidebar on the right with margin
   const SIDEBAR_START_Y = 50;
-  const GAP = 30; // Gap between blocks
+  const FIXED_VERTICAL_SPACING = 280; // Fixed spacing per block slot (250px height * 0.6 scale + gap)
   const SMALL_SCALE = 0.6;
 
   const backgroundBlocks = blocks.filter(b => b.id !== focusedBlock.id);
 
   // Center the focused block in the viewport
   const FOCUSED_X = (window.innerWidth - BLOCK_WIDTH) / 2;
-  const FOCUSED_Y = (window.innerHeight - 400) / 2; // Approximate block height
+  const FOCUSED_Y = (window.innerHeight - BLOCK_HEIGHT) / 2;
   
   positions[focusedBlock.id] = { x: FOCUSED_X, y: FOCUSED_Y };
   scales[focusedBlock.id] = 1;
   zIndices[focusedBlock.id] = 1000;
 
-  // Position background blocks: calculate height, add gap, next block
-  let currentY = SIDEBAR_START_Y;
+  // Position background blocks with fixed spacing
   backgroundBlocks.forEach((block, index) => {
-    positions[block.id] = { x: SIDEBAR_X, y: currentY };
+    positions[block.id] = { 
+      x: SIDEBAR_X, 
+      y: SIDEBAR_START_Y + (index * FIXED_VERTICAL_SPACING) 
+    };
     scales[block.id] = SMALL_SCALE;
     zIndices[block.id] = 100 + (backgroundBlocks.length - index);
-    
-    // Move Y down by this block's height + gap for next block
-    const blockHeight = calculateBlockHeight(block, SMALL_SCALE);
-    currentY += blockHeight + GAP;
   });
 
   return { positions, scales, zIndices };
