@@ -1,6 +1,6 @@
-import { Grid3x3, Focus, Move } from "lucide-react";
+import { Home, Focus } from "lucide-react";
 
-export type LayoutMode = "spatial" | "grid" | "focused";
+export type LayoutMode = "home" | "focused";
 
 interface LayoutControlsProps {
   currentMode: LayoutMode;
@@ -8,9 +8,8 @@ interface LayoutControlsProps {
 }
 
 export function LayoutControls({ currentMode, onModeChange }: LayoutControlsProps) {
-  const modes: { value: LayoutMode; icon: typeof Grid3x3; label: string }[] = [
-    { value: "spatial", icon: Move, label: "Spatial" },
-    { value: "grid", icon: Grid3x3, label: "Grid" },
+  const modes: { value: LayoutMode; icon: typeof Home; label: string }[] = [
+    { value: "home", icon: Home, label: "Home" },
     { value: "focused", icon: Focus, label: "Focused" },
   ];
 

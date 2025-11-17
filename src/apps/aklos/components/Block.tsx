@@ -11,12 +11,12 @@ interface BlockProps {
   canvasZoom: number;
   zIndexBase: number;
   scale?: number;
-  layoutMode: "spatial" | "grid" | "focused";
+  layoutMode: "home" | "focused";
   layoutZIndex?: number;
 }
 
 export function Block({ block, isSelected, onSelect, onPositionChange, onInteraction, canvasZoom, zIndexBase, scale = 1, layoutMode, layoutZIndex }: BlockProps) {
-  const isDraggingEnabled = layoutMode === "spatial";
+  const isDraggingEnabled = layoutMode === "home";
   
   const { isDragging, handleMouseDown, hasMoved } = useBlockDrag({
     blockId: block.id,
@@ -60,7 +60,7 @@ export function Block({ block, isSelected, onSelect, onPositionChange, onInterac
         WebkitUserSelect: "none",
         willChange: isDragging ? "transform" : "auto",
         zIndex: isDragging ? 1000 : layoutZIndex !== undefined ? layoutZIndex : zIndexBase,
-        transition: layoutMode !== "spatial" ? "transform 0.3s ease-out" : "none",
+        transition: layoutMode !== "home" ? "transform 0.3s ease-out" : "none",
         transformOrigin: "top left",
       }}
     >
